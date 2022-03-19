@@ -1,0 +1,79 @@
+version: '2'
+services:
+  zookeeper:
+    image: quay.io/debezium/zookeeper:${DEBEZIUM_VERSION}
+    ports:
+     - 2181:2181
+     - 2888:2888
+     - 3888:3888
+  kafka:
+    image: quay.io/debezium/kafka:${DEBEZIUM_VERSION}
+    ports:
+     - 9092:9092
+    links:
+     - zookeeper
+    environment:
+     - ZOOKEEPER_CONNECT=zookeeper:2181
+
+  db2server:
+    image: debezium/db2-cdc:${DEBEZIUM_VERSION}
+    build:
+      context: ./debezium-db2-init/db2server
+    privileged: True
+    ports:
+     - 50000:50000
+    environment:
+     - LICENSE=accept 
+     - DBNAME=TESTDB
+     - DB2INST1_PASSWORD==Password!
+
+  db2server2:
+    image: debezium/db2-cdc:${DEBEZIUM_VERSION}
+    build:
+      context: ./debezium-db2-init/db2server
+    privileged: True
+    ports:
+     - 50001:50000
+    environment:
+     - LICENSE=accept 
+     - DBNAME=TESTDB
+     - DB2INST1_PASSWORD==Password!
+
+  connect:
+    image: debezium/connect-jdbc-es:${DEBEZIUM_VERSION}
+    build:
+      context: ./debezium-db2-init/db2connect
+      args:
+        DEBEZIUM_VERSION: ${DEBEZIUM_VERSION}
+    ports:
+     - 8083:8083
+     - 5005:5005
+    links:
+     - kafka
+     - db2server
+    environment:
+     - BOOTSTRAP_SERVERS=kafka:9092
+     - GROUP_ID=1
+     - CONFIG_STORAGE_TOPIC=my_connect_configs
+     - OFFSET_STORAGE_TOPIC=my_connect_offsets
+     - STATUS_STORAGE_TOPIC=my_source_connect_statuses
+     
+  control-center:
+    image: confluentinc/cp-enterprise-control-center
+    hostname: control-center
+    container_name: control-center
+    depends_on:
+      - zookeeper
+      - kafka
+      - connect
+    ports:
+      - "9021:9021"
+    environment:
+      CONTROL_CENTER_BOOTSTRAP_SERVERS: 'kafka:9092'
+      CONTROL_CENTER_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      CONTROL_CENTER_CONNECT_CLUSTER: 'connect:8083'
+      CONTROL_CENTER_REPLICATION_FACTOR: 1
+      CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1
+      CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
+      CONFLUENT_METRICS_TOPIC_REPLICATION: 1
+      PORT: 9021
