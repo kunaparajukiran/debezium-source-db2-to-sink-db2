@@ -1,6 +1,7 @@
-##CDC debezium source DB2 to sink DB2
+## CDC debezium source DB2 to sink DB2
 ### Installation steps
 - Install docker and docker compose 
+- `export DEBEZIUM_VERSION=1.8`
 - Run `docker-compose up -d`
 - Run `docker-compose ps` command to make sure all conteiners are up on running
 - Run   `docker logs -f db2-cdc_db2server2_1` command to see db2 entire setup is complete , it will take 5 to 10 min 
@@ -23,3 +24,7 @@
 > docker-compose -f docker-compose.yaml exec kafka /kafka/bin/kafka-console-consumer.sh     --bootstrap-server kafka:9092     --from-beginning     --property print.key=true     --topic db2server.DB2INST1.CUSTOMERS
 
 
+
+
+
+CREATE FULLTEXT INDEX keywordAndPaperAndAuthor FOR (n:keyword|paper|author) ON EACH [ n.name,n.title]
